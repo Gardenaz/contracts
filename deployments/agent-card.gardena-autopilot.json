@@ -1,0 +1,65 @@
+{
+  "name": "Gardena Autopilot Agent",
+  "description": "Policy-gated AI agent for Mantle RWA farming. It analyzes USDY and mETH yield routes, recommends bounded strategy moves, writes transparent decision logs, and exposes proof data for Gardena users.",
+  "version": "0.1.0",
+  "capabilities": [
+    {
+      "type": "rwa-yield-planning",
+      "description": "Ranks Mantle RWA opportunities across USDY, mETH, and dynamic USDY/mETH routes."
+    },
+    {
+      "type": "policy-gated-autopilot",
+      "description": "Applies deterministic user guardrails before approving rebalance decisions."
+    },
+    {
+      "type": "onchain-decision-logging",
+      "description": "Anchors approved or blocked decisions through the DecisionLog contract on Mantle Sepolia."
+    },
+    {
+      "type": "llm-advisory-rationale",
+      "description": "Uses an OpenAI-compatible LLM node for market explanation while keeping execution bounded by deterministic policy checks."
+    }
+  ],
+  "endpoints": {
+    "web": "https://gardena.app/app",
+    "a2a": "https://agent.gardena.app/autopilot/plan",
+    "mcp": "https://agent.gardena.app/mcp"
+  },
+  "serviceEndpoints": [
+    {
+      "type": "web",
+      "url": "https://gardena.app/app"
+    },
+    {
+      "type": "a2a",
+      "url": "https://agent.gardena.app/autopilot/plan"
+    },
+    {
+      "type": "mcp",
+      "url": "https://agent.gardena.app/mcp"
+    }
+  ],
+  "paymentAddress": "0x143974B30727F9856131BD6F37E64679aF5F0626",
+  "chainId": 5003,
+  "network": "mantle-sepolia",
+  "contracts": {
+    "agentIdentity": "0x1631F6Fe8B62c99519333a5028F39F72Ad71784F",
+    "decisionLog": "0x5c256C003A4887AC751414B9cb394D2e647c5aA9",
+    "riskPolicy": "0x2F1dF3231dD25b63e8f37448FB20D962B66c468A",
+    "reputationRegistry": "0x00f03fCc71516373Ce1D2b9c469fa4f0b1F8B017",
+    "validationRegistry": "0x961dEb758940dc7aD5556b96D5300FD7f7CDE143",
+    "autopilotPolicy": "0xC706B3B4F3B671a2e6F146271Af2c9f67ed0C6E2"
+  },
+  "authentication": {
+    "type": "wallet-signature",
+    "description": "Requests should be authenticated with a user wallet or service-side relayer policy."
+  },
+  "model": "OpenAI-compatible LLM advisor with deterministic fallback",
+  "properties": {
+    "boundedAutonomy": true,
+    "llmCanExecuteDirectly": false,
+    "policyGate": "deterministic",
+    "supportedAssets": ["USDY", "mETH", "USDY/mETH"],
+    "supportedProtocols": ["Mantle RWA USDY Route", "Mantle mETH Yield Route", "Mantle Dynamic RWA Route"]
+  }
+}

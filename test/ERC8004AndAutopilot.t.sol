@@ -141,4 +141,67 @@ contract ERC8004AndAutopilotTest is Test {
 
         assertFalse(autopilot.canExecute(user, 0.5 ether, 1, protocolA));
     }
+
+    // ── ERC-721 compliance ──
+
+    function testERC721NameAndSymbol() public {
+        assertEq(identity.name(), "Gardena Agent Identity");
+        assertEq(identity.symbol(), "GARDEN");
+    }
+
+    function testERC721Transfer() public {
+        vm.prank(agentOwner);
+        uint256 agentId = identity.registerAgent("Gardena Agent", "ipfs://gardena-agent", agentOwner);
+
+        vm.prank(agentOwner);
+        identity.transferFrom(agentOwner, user, agentId);
+        assertEq(identity.ownerOf(agentId), user);
+    }
+
+    function testERC721SafeTransferFrom() public {
+        vm.prank(agentOwner);
+        uint256 agentId = identity.registerAgent("Gardena Agent", "ipfs://gardena-agent", agentOwner);
+
+        vm.prank(agentOwner);
+        identity.safeTransferFrom(agentOwner, user, agentId);
+        assertEq(identity.ownerOf(agentId), user);
+    }
+
+    function testERC721BalanceAndTotalSupply() public {
+        vm.prank(agentOwner);
+        identity.registerAgent("Agent A", "ipfs://a", agentOwner);
+        vm.prank(agentOwner);
+        identity.registerAgent("Agent B", "ipfs://b", agentOwner);
+
+        assertEq(identity.balanceOf(agentOwner), 2);
+        assertEq(identity.totalSupply(), 2);
+    }
+
+    function testERC721TokenURIMatchesAgentCardURI() public {
+        vm.prank(agentOwner);
+        uint256 agentId = identity.registerAgent("Gardena Agent", "ipfs://gardena-agent-card", agentOwner);
+
+        assertEq(identity.tokenURI(agentId), "ipfs://gardena-agent-card");
+        assertEq(identity.agentURI(agentId), "ipfs://gardena-agent-card");
+    }
+
+    function testSetAgentURIUpdatesBothAgentURIAndTokenURI() public {
+        vm.prank(agentOwner);
+        uint256 agentId = identity.registerAgent("Gardena Agent", "ipfs://v1", agentOwner);
+
+        vm.prank(agentOwner);
+        identity.setAgentURI(agentId, "ipfs://v2");
+
+        assertEq(identity.agentURI(agentId), "ipfs://v2");
+        assertEq(identity.tokenURI(agentId), "ipfs://v2");
+    }
+
+    function testERC165SupportsInterface() public {
+        // ERC-165
+        assertTrue(identity.supportsInterface(0x01ffc9a7));
+        // ERC-721
+        assertTrue(identity.supportsInterface(0x80ac58cd));
+        // ERC-721Metadata
+        assertTrue(identity.supportsInterface(0x5b5e139f));
+    }
 }
