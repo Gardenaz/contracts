@@ -174,13 +174,13 @@ sequenceDiagram
 Final ERC-8004 agent metadata URI:
 
 ```text
-ipfs://bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4
+ipfs://bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu
 ```
 
 Gateway preview:
 
 ```text
-https://ipfs.io/ipfs/bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4
+https://ipfs.io/ipfs/bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu
 ```
 
 Register command:
@@ -189,7 +189,7 @@ Register command:
 cast send "$AGENT_IDENTITY" \
   "registerAgent(string,string,address)" \
   "Gardena Autopilot" \
-  "ipfs://bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4" \
+  "ipfs://bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu" \
   "$AGENT_WALLET" \
   --rpc-url "$RPC_URL" \
   --private-key "$PRIVATE_KEY"
