@@ -21,22 +21,22 @@
     }
   ],
   "endpoints": {
-    "web": "https://gardena.app/app",
-    "a2a": "https://agent.gardena.app/autopilot/plan",
-    "mcp": "https://agent.gardena.app/mcp"
+    "web": "https://gardenaz.xyz/app",
+    "a2a": "https://agent.gardenaz.xyz/autopilot/plan",
+    "mcp": "https://agent.gardenaz.xyz/mcp"
   },
   "serviceEndpoints": [
     {
       "type": "web",
-      "url": "https://gardena.app/app"
+      "url": "https://gardenaz.xyz/app"
     },
     {
       "type": "a2a",
-      "url": "https://agent.gardena.app/autopilot/plan"
+      "url": "https://agent.gardenaz.xyz/autopilot/plan"
     },
     {
       "type": "mcp",
-      "url": "https://agent.gardena.app/mcp"
+      "url": "https://agent.gardenaz.xyz/mcp"
     }
   ],
   "paymentAddress": "0x143974B30727F9856131BD6F37E64679aF5F0626",
