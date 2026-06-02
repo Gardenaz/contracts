@@ -169,6 +169,32 @@ sequenceDiagram
 - `foundry.toml`
 - `package.json`
 
+## Agent card URI
+
+Final ERC-8004 agent metadata URI:
+
+```text
+ipfs://bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4
+```
+
+Gateway preview:
+
+```text
+https://ipfs.io/ipfs/bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4
+```
+
+Register command:
+
+```bash
+cast send "$AGENT_IDENTITY" \
+  "registerAgent(string,string,address)" \
+  "Gardena Autopilot" \
+  "ipfs://bafkreidjyk53skf6uzizpmfqjozk62gtm3qv6jwsj4dbfyoqg6shelydd4" \
+  "$AGENT_WALLET" \
+  --rpc-url "$RPC_URL" \
+  --private-key "$PRIVATE_KEY"
+```
+
 ## Environment
 
 ```bash
