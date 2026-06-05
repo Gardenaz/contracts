@@ -88,6 +88,35 @@ Role:
 - stores or validates basic risk constraints.
 - used as broader policy source for Agent/App safety checks.
 
+### GardenUsdMock
+
+Path: `contracts/GardenUsdMock.sol`
+
+Role:
+
+- settlement token for testing and controlled deployments.
+- supports faucet, mint, and burn for vault flows.
+
+### GardenStrategyAssetMock
+
+Path: `contracts/GardenStrategyAssetMock.sol`
+
+Role:
+
+- route asset token used by the vault as underlying holdings.
+- supports owner-approved minters so the vault can mint/burn the held route asset.
+
+### GardenRwaMockVault
+
+Path: `contracts/GardenRwaMockVault.sol`
+
+Role:
+
+- user-owned vault positions with operator authorization.
+- `plant()` deposits gUSD, burns settlement, and mints route asset holdings into the vault.
+- `harvest()` burns route asset holdings and mints settled gUSD back to the owner.
+- `rebalance()` rotates a position into a different route when policy and authorization allow.
+
 ### DecisionLog
 
 Path: `contracts/DecisionLog.sol`
@@ -211,6 +240,11 @@ RISK_POLICY_ADDRESS=
 REPUTATION_REGISTRY_ADDRESS=
 VALIDATION_REGISTRY_ADDRESS=
 AUTOPILOT_POLICY_ADDRESS=
+GARDEN_USD_MOCK_ADDRESS=
+GARDEN_RWA_MOCK_VAULT_ADDRESS=
+STEADY_ASSET_ADDRESS=
+GROWTH_ASSET_ADDRESS=
+BOOST_ASSET_ADDRESS=
 ```
 
 ## Development
@@ -225,14 +259,76 @@ Package scripts:
 ```json
 {
   "build": "forge build",
-  "test": "forge test -vv"
+  "test": "forge test -vv",
+  "verify": "bash script/VerifyMantleSepolia.sh"
 }
 ```
 
 ## Deployment
 
 ```bash
-forge script script/Deploy.s.sol --rpc-url $MANTLE_RPC_URL --private-key $PRIVATE_KEY --broadcast
+export STABLE_FEED_ADDRESS=...
+export GROWTH_FEED_ADDRESS=...
+export BOOST_FEED_ADDRESS=...
+forge script script/Deploy.s.sol:DeployScript --rpc-url $MANTLE_RPC_URL --private-key $PRIVATE_KEY --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+```
+
+That single script now deploys:
+
+- `AgentIdentity`
+- `DecisionLog`
+- `RiskPolicy`
+- `ReputationRegistry`
+- `ValidationRegistry`
+- `AutopilotPolicy`
+- `GardenUsdMock`
+- `GardenStrategyAssetMock` route holdings for `steady`, `growth`, and `boost`
+- `GardenRwaMockVault`
+- direct Chainlink feed routes for `steady`, `growth`, and `boost`
+
+The default live feeds are:
+
+- `STABLE_FEED_ADDRESS` defaults to Mantle `USDC / USD`
+- `GROWTH_FEED_ADDRESS` defaults to Mantle `ETH / USD`
+- `BOOST_FEED_ADDRESS` defaults to Mantle `mETH / USD`
+
+## Verification
+
+Fast path from WSL:
+
+```bash
+cd /mnt/e/web3/gardenaz/contracts
+export MANTLE_RPC_URL=...
+export ETHERSCAN_API_KEY=...
+npm run verify
+```
+
+The script verifies:
+
+- `AgentIdentity`
+- `DecisionLog`
+- `RiskPolicy`
+- `AutopilotPolicy`
+- `ReputationRegistry`
+- `ValidationRegistry`
+- `GardenUsdMock`
+- `GardenStrategyAssetMock` for steady, growth, and boost
+- `GardenRwaMockVault`
+
+It defaults to the latest deployed addresses in this repo, but you can override any of them with env vars:
+
+```bash
+export AGENT_IDENTITY_ADDRESS=...
+export DECISION_LOG_ADDRESS=...
+export RISK_POLICY_ADDRESS=...
+export REPUTATION_REGISTRY_ADDRESS=...
+export VALIDATION_REGISTRY_ADDRESS=...
+export AUTOPILOT_POLICY_ADDRESS=...
+export GARDEN_USD_MOCK_ADDRESS=...
+export GARDEN_RWA_MOCK_VAULT_ADDRESS=...
+export STEADY_ASSET_ADDRESS=...
+export GROWTH_ASSET_ADDRESS=...
+export BOOST_ASSET_ADDRESS=...
 ```
 
 ## Current execution status
@@ -245,11 +341,13 @@ Implemented:
 - autopilot policy boundaries.
 - decision hash logging.
 - outcome update hook.
+- user-owned vault with operator-managed route asset holdings.
+- deployment and verification scripts for core contracts and route assets.
 - Foundry tests for ERC-8004 + autopilot policy.
 
 Not implemented yet:
 
 - production deployment addresses.
 - verified explorer links.
-- live strategy vault/protocol calls.
+- live strategy vault integrations outside the local route-asset model.
 - Bybit API support; not part of current AI x RWA core.

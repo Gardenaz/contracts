@@ -6,30 +6,31 @@ import {DecisionLog} from "../contracts/DecisionLog.sol";
 
 contract DecisionBenchmarkTest is Test {
     DecisionLog decisionLog;
+    address writer = address(0xBEEF);
 
     function setUp() public {
         decisionLog = new DecisionLog();
+        decisionLog.setWriter(writer, true);
     }
 
     function testRecordsOutcomeWithExecutionBenchmarkFields() public {
+        vm.prank(writer);
         uint256 decisionId = decisionLog.logDecision(
             1,
             keccak256("decision"),
             keccak256("steady-rwa-usdy"),
             address(0x1001),
             1 ether,
-            1
+            1,
+            address(0xCAFE),
+            7,
+            3,
+            writer
         );
 
-        decisionLog.recordOutcome(
-            decisionId,
-            bytes32(uint256(0xabc)),
-            125,
-            520,
-            1000 ether,
-            1001 ether,
-            true,
-            "ipfs://outcome-1"
+        vm.prank(writer);
+        decisionLog.recordOutcomeForDecision(
+            decisionId, bytes32(uint256(0xabc)), 125, 520, 1000 ether, 1001 ether, true, "ipfs://outcome-1"
         );
 
         (
@@ -39,6 +40,7 @@ contract DecisionBenchmarkTest is Test {
             uint256 inputAmount,
             uint256 outputAmount,
             bool success,
+            bool finalized,
             string memory metadataURI,
             uint256 timestamp
         ) = decisionLog.outcomes(decisionId);
@@ -49,26 +51,58 @@ contract DecisionBenchmarkTest is Test {
         assertEq(inputAmount, 1000 ether);
         assertEq(outputAmount, 1001 ether);
         assertTrue(success);
+        assertTrue(finalized);
         assertEq(metadataURI, "ipfs://outcome-1");
         assertGt(timestamp, 0);
     }
 
     function testRecordsOutcomeByDecisionHash() public {
         bytes32 decisionHash = keccak256("decision-by-hash");
-        decisionLog.logDecision(1, decisionHash, keccak256("strategy"), address(0x1001), 1 ether, 1);
+        vm.prank(writer);
+        decisionLog.logDecision(
+            1, decisionHash, keccak256("strategy"), address(0x1001), 1 ether, 1, address(0xCAFE), 9, 1, writer
+        );
 
-        decisionLog.recordOutcomeForHash(decisionHash, bytes32(uint256(0xdef)), 10, 500, 1 ether, 2 ether, true, "ipfs://hash-outcome");
+        vm.prank(writer);
+        decisionLog.recordOutcomeForHash(
+            decisionHash, bytes32(uint256(0xdef)), 10, 500, 1 ether, 2 ether, true, "ipfs://hash-outcome"
+        );
 
         uint256 decisionId = decisionLog.decisionIdsByHash(decisionHash);
-        (bytes32 executionTxHash, int256 pnlBps, , , , bool success, string memory metadataURI, ) = decisionLog.outcomes(decisionId);
+        (
+            bytes32 executionTxHash,
+            int256 pnlBps,
+            ,
+            ,
+            ,
+            bool success,
+            bool finalized,
+            string memory metadataURI,
+            
+        ) = decisionLog.outcomes(decisionId);
         assertEq(executionTxHash, bytes32(uint256(0xdef)));
         assertEq(pnlBps, 10);
         assertTrue(success);
+        assertTrue(finalized);
         assertEq(metadataURI, "ipfs://hash-outcome");
     }
 
-    function testCannotRecordOutcomeForMissingDecision() public {
-        vm.expectRevert("decision not found");
-        decisionLog.recordOutcome(999, bytes32(uint256(1)), 0, 0, 0, 0, false, "ipfs://missing");
+    function testRejectsUnauthorizedWriterAndDoubleFinalize() public {
+        vm.expectRevert("not writer");
+        decisionLog.logDecision(
+            1, keccak256("bad"), keccak256("strategy"), address(0x1001), 1 ether, 1, address(0xCAFE), 1, 1, writer
+        );
+
+        vm.prank(writer);
+        uint256 decisionId = decisionLog.logDecision(
+            1, keccak256("good"), keccak256("strategy"), address(0x1001), 1 ether, 1, address(0xCAFE), 1, 1, writer
+        );
+
+        vm.prank(writer);
+        decisionLog.recordOutcomeForDecision(decisionId, bytes32(uint256(1)), 0, 0, 0, 0, false, "ipfs://once");
+
+        vm.prank(writer);
+        vm.expectRevert("outcome finalized");
+        decisionLog.recordOutcomeForDecision(decisionId, bytes32(uint256(2)), 0, 0, 0, 0, false, "ipfs://twice");
     }
 }

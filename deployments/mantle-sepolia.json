@@ -3,12 +3,20 @@
     "chainId": 5003,
     "network": "mantle-sepolia",
     "contracts": {
-      "agentIdentity": "0xfAc7E0Ecb4BdFB5CabDf0A4A8f9930E547771271",
-      "decisionLog": "0x4f38D23639a1E8644c64b262d2E4f09d22c5aC7c",
-      "riskPolicy": "0x73132c590b323B37344d52C9adaDA2dA939896d3",
-      "reputationRegistry": "0xC2a58107725a773A21102f575104b869dAfFCb4d",
-      "validationRegistry": "0x25863A08185bb82C7C363745702125800b4509da",
-      "autopilotPolicy": "0xe04003396491954919a851fBbF90d87555cDdFEf"
+      "agentIdentity": "0x7d4cF8dAcCdc589d8601CB547d693c73dd5724e2",
+      "decisionLog": "0x16E67F2Aaa40767FefeD0f2E1cF6bE87Ac3722Da",
+      "riskPolicy": "0xF48817E86B2D6256c6Af77b5839BC6Ea29C25048",
+      "reputationRegistry": "0x5ceFB0C6Be03909dc5d291BE3bE9ef677e95b672",
+      "validationRegistry": "0x116Fd78B3cb66c0904950656F57E7c28691e121B",
+      "autopilotPolicy": "0xd35fc1eb7BA3429f1B206FA6b054bbB71eCbD7e8",
+      "gardenUsdMock": "0x66cE4A644e004830887C3E8a44Fd5122B1edb28B",
+      "gardenRwaMockVault": "0x376368699aF13e6492b2A330e1d8e5D6560e38a8",
+      "steadyAdapter": "0x23F83a27674E9776Ab663b10e3745DD682858f29",
+      "growthAdapter": "0x744F554EfEA9cE87E459E4a927Ba7F1fb85669c5",
+      "boostAdapter": "0x9FD80B063C4d28fDbc592C7f4E4BA7F6f8166DEc",
+      "steadyOracle": "0x22b422CECb0D4Bd5afF3EA999b048FA17F5263bD",
+      "growthOracle": "0x5bc7Cf88EB131DB18b5d7930e793095140799aD5",
+      "boostOracle": "0xB16FcAFB8378baA0a69142a325878FDCad58606A"
     },
     "erc8004Registration": {
       "agentId": 1,
@@ -2381,3 +2389,5 @@
     ]
   }
 }
+
+

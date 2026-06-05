@@ -23,7 +23,7 @@ contract AgentIdentity is ERC721URIStorage {
     event MetadataSet(uint256 indexed agentId, string indexed indexedMetadataKey, string metadataKey, bytes metadataValue);
     event ReputationUpdated(uint256 indexed agentId, uint256 score);
 
-    constructor() ERC721("Gardena Agent Identity", "GARDEN") {}
+    constructor() ERC721("Gardenaz Agent Identity", "GARDENAZ") {}
 
     modifier onlyExisting(uint256 agentId) {
         require(_ownerOf(agentId) != address(0), "agent not found");
