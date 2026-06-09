@@ -25,7 +25,7 @@ contract AutopilotPolicy is Ownable {
     mapping(address => address[]) private protocolLists;
     mapping(address => address[]) private executorLists;
     mapping(address => bytes32[]) private strategyLists;
-    mapping(address => bool) public authorizedVaults;
+    mapping(address => bool) public authorizedCallers;
 
     event AutopilotPolicySet(
         address indexed user,
@@ -40,7 +40,7 @@ contract AutopilotPolicy is Ownable {
     event ProtocolAllowed(address indexed user, address indexed protocol, bool allowed);
     event ExecutorAllowed(address indexed user, address indexed executor, bool allowed);
     event StrategyAllowed(address indexed user, bytes32 indexed strategyId, bool allowed);
-    event VaultAuthorized(address indexed vault, bool allowed);
+    event ExecutionCallerAuthorized(address indexed caller, bool allowed);
     event AutopilotExecutionRecorded(
         address indexed user,
         address indexed executor,
@@ -55,15 +55,15 @@ contract AutopilotPolicy is Ownable {
 
     constructor() Ownable(msg.sender) {}
 
-    modifier onlyAuthorizedVault() {
-        require(authorizedVaults[msg.sender], "not vault");
+    modifier onlyAuthorizedCaller() {
+        require(authorizedCallers[msg.sender], "not caller");
         _;
     }
 
-    function setAuthorizedVault(address vault, bool allowed) external onlyOwner {
-        require(vault != address(0), "bad vault");
-        authorizedVaults[vault] = allowed;
-        emit VaultAuthorized(vault, allowed);
+    function setAuthorizedCaller(address caller, bool allowed) external onlyOwner {
+        require(caller != address(0), "bad caller");
+        authorizedCallers[caller] = allowed;
+        emit ExecutionCallerAuthorized(caller, allowed);
     }
 
     function setAutopilotPolicy(
@@ -105,29 +105,17 @@ contract AutopilotPolicy is Ownable {
 
     function setProtocolAllowed(address protocol, bool allowed) external {
         require(protocol != address(0), "bad protocol");
-        if (allowed && !allowedProtocols[msg.sender][protocol]) {
-            protocolLists[msg.sender].push(protocol);
-        }
-        allowedProtocols[msg.sender][protocol] = allowed;
-        emit ProtocolAllowed(msg.sender, protocol, allowed);
+        _setProtocolAllowed(msg.sender, protocol, allowed);
     }
 
     function setExecutorAllowed(address executor, bool allowed) external {
         require(executor != address(0), "bad executor");
-        if (allowed && !allowedExecutors[msg.sender][executor]) {
-            executorLists[msg.sender].push(executor);
-        }
-        allowedExecutors[msg.sender][executor] = allowed;
-        emit ExecutorAllowed(msg.sender, executor, allowed);
+        _setExecutorAllowed(msg.sender, executor, allowed);
     }
 
     function setStrategyAllowed(bytes32 strategyId, bool allowed) external {
         require(strategyId != bytes32(0), "bad strategy");
-        if (allowed && !allowedStrategies[msg.sender][strategyId]) {
-            strategyLists[msg.sender].push(strategyId);
-        }
-        allowedStrategies[msg.sender][strategyId] = allowed;
-        emit StrategyAllowed(msg.sender, strategyId, allowed);
+        _setStrategyAllowed(msg.sender, strategyId, allowed);
     }
 
     function canExecute(
@@ -154,7 +142,7 @@ contract AutopilotPolicy is Ownable {
         uint256 amount,
         uint8 riskLevel,
         uint256 lossAmount
-    ) external onlyAuthorizedVault {
+    ) external onlyAuthorizedCaller {
         require(canExecute(user, executor, protocol, strategyId, amount, riskLevel), "policy blocked");
         Policy storage policy = policies[user];
         if (block.timestamp >= policy.dailyWindowStartedAt + 1 days) {
@@ -193,59 +181,100 @@ contract AutopilotPolicy is Ownable {
     }
 
     function _replaceProtocols(address user, address[] calldata protocols) private {
-        address[] storage current = protocolLists[user];
-        for (uint256 i = 0; i < current.length; i++) {
-            address protocol = current[i];
-            if (allowedProtocols[user][protocol]) {
-                allowedProtocols[user][protocol] = false;
-                emit ProtocolAllowed(user, protocol, false);
-            }
+        while (protocolLists[user].length > 0) {
+            _setProtocolAllowed(user, protocolLists[user][protocolLists[user].length - 1], false);
         }
-        delete protocolLists[user];
 
         for (uint256 i = 0; i < protocols.length; i++) {
             require(protocols[i] != address(0), "bad protocol");
-            allowedProtocols[user][protocols[i]] = true;
-            protocolLists[user].push(protocols[i]);
-            emit ProtocolAllowed(user, protocols[i], true);
+            _setProtocolAllowed(user, protocols[i], true);
         }
     }
 
     function _replaceExecutors(address user, address[] calldata executors) private {
-        address[] storage current = executorLists[user];
-        for (uint256 i = 0; i < current.length; i++) {
-            address executor = current[i];
-            if (allowedExecutors[user][executor]) {
-                allowedExecutors[user][executor] = false;
-                emit ExecutorAllowed(user, executor, false);
-            }
+        while (executorLists[user].length > 0) {
+            _setExecutorAllowed(user, executorLists[user][executorLists[user].length - 1], false);
         }
-        delete executorLists[user];
 
         for (uint256 i = 0; i < executors.length; i++) {
             require(executors[i] != address(0), "bad executor");
-            allowedExecutors[user][executors[i]] = true;
-            executorLists[user].push(executors[i]);
-            emit ExecutorAllowed(user, executors[i], true);
+            _setExecutorAllowed(user, executors[i], true);
         }
     }
 
     function _replaceStrategies(address user, bytes32[] calldata strategies) private {
-        bytes32[] storage current = strategyLists[user];
-        for (uint256 i = 0; i < current.length; i++) {
-            bytes32 strategyId = current[i];
-            if (allowedStrategies[user][strategyId]) {
-                allowedStrategies[user][strategyId] = false;
-                emit StrategyAllowed(user, strategyId, false);
-            }
+        while (strategyLists[user].length > 0) {
+            _setStrategyAllowed(user, strategyLists[user][strategyLists[user].length - 1], false);
         }
-        delete strategyLists[user];
 
         for (uint256 i = 0; i < strategies.length; i++) {
             require(strategies[i] != bytes32(0), "bad strategy");
-            allowedStrategies[user][strategies[i]] = true;
-            strategyLists[user].push(strategies[i]);
-            emit StrategyAllowed(user, strategies[i], true);
+            _setStrategyAllowed(user, strategies[i], true);
+        }
+    }
+
+    function _setProtocolAllowed(address user, address protocol, bool allowed) private {
+        bool current = allowedProtocols[user][protocol];
+        if (current == allowed) {
+            return;
+        }
+
+        allowedProtocols[user][protocol] = allowed;
+        if (allowed) {
+            protocolLists[user].push(protocol);
+        } else {
+            _removeAddress(protocolLists[user], protocol);
+        }
+        emit ProtocolAllowed(user, protocol, allowed);
+    }
+
+    function _setExecutorAllowed(address user, address executor, bool allowed) private {
+        bool current = allowedExecutors[user][executor];
+        if (current == allowed) {
+            return;
+        }
+
+        allowedExecutors[user][executor] = allowed;
+        if (allowed) {
+            executorLists[user].push(executor);
+        } else {
+            _removeAddress(executorLists[user], executor);
+        }
+        emit ExecutorAllowed(user, executor, allowed);
+    }
+
+    function _setStrategyAllowed(address user, bytes32 strategyId, bool allowed) private {
+        bool current = allowedStrategies[user][strategyId];
+        if (current == allowed) {
+            return;
+        }
+
+        allowedStrategies[user][strategyId] = allowed;
+        if (allowed) {
+            strategyLists[user].push(strategyId);
+        } else {
+            _removeBytes32(strategyLists[user], strategyId);
+        }
+        emit StrategyAllowed(user, strategyId, allowed);
+    }
+
+    function _removeAddress(address[] storage values, address value) private {
+        for (uint256 i = 0; i < values.length; i++) {
+            if (values[i] == value) {
+                values[i] = values[values.length - 1];
+                values.pop();
+                return;
+            }
+        }
+    }
+
+    function _removeBytes32(bytes32[] storage values, bytes32 value) private {
+        for (uint256 i = 0; i < values.length; i++) {
+            if (values[i] == value) {
+                values[i] = values[values.length - 1];
+                values.pop();
+                return;
+            }
         }
     }
 

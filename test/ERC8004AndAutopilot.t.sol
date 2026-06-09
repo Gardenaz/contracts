@@ -3,26 +3,22 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {AgentIdentity} from "../contracts/AgentIdentity.sol";
-import {ReputationRegistry} from "../contracts/ReputationRegistry.sol";
-import {ValidationRegistry} from "../contracts/ValidationRegistry.sol";
 import {AutopilotPolicy} from "../contracts/AutopilotPolicy.sol";
 
 contract ERC8004AndAutopilotTest is Test {
     AgentIdentity identity;
-    ReputationRegistry reputation;
-    ValidationRegistry validation;
     AutopilotPolicy autopilot;
 
     address agentOwner = address(0xA11CE);
     address user = address(0xB0B);
-    address validator = address(0xCAFE);
+    address executor = address(0xCAFE);
     address protocolA = address(0x1001);
     address protocolB = address(0x1002);
+    bytes32 steadyStrategy = keccak256("agni-usdy-defensive");
+    bytes32 growthStrategy = keccak256("agni-meth-liquidity");
 
     function setUp() public {
         identity = new AgentIdentity();
-        reputation = new ReputationRegistry(address(identity));
-        validation = new ValidationRegistry(address(identity));
         autopilot = new AutopilotPolicy();
     }
 
@@ -32,6 +28,8 @@ contract ERC8004AndAutopilotTest is Test {
 
         assertEq(agentId, 1);
         assertEq(identity.ownerOf(agentId), agentOwner);
+        (address storedOwner,, , ,) = identity.agents(agentId);
+        assertEq(storedOwner, agentOwner);
         assertEq(identity.agentURI(agentId), "ipfs://gardenaz-agent");
         assertEq(identity.getMetadata(agentId, "agentWallet"), abi.encodePacked(agentOwner));
         assertTrue(identity.isAuthorizedOrOwner(agentOwner, agentId));
@@ -50,105 +48,79 @@ contract ERC8004AndAutopilotTest is Test {
         identity.setMetadata(agentId, "endpoint", bytes("https://evil.example"));
     }
 
-    function testReputationRegistryStoresFeedbackAndResponses() public {
-        vm.prank(agentOwner);
-        uint256 agentId = identity.registerAgent("Gardenaz Agent", "ipfs://gardenaz-agent", agentOwner);
-
-        bytes32 feedbackHash = keccak256("rice-pass-feedback");
-        vm.prank(user);
-        uint64 index = reputation.giveFeedback(
-            agentId,
-            85,
-            0,
-            "yield",
-            "rice",
-            "https://app.gardenaz.xyz/diary/1",
-            "ipfs://feedback-1",
-            feedbackHash
-        );
-
-        assertEq(index, 1);
-        (int128 value, uint8 decimals, bool revoked, string memory tag1, string memory tag2) =
-            reputation.getFeedback(agentId, user, index);
-        assertEq(value, 85);
-        assertEq(decimals, 0);
-        assertFalse(revoked);
-        assertEq(tag1, "yield");
-        assertEq(tag2, "rice");
-
-        vm.prank(agentOwner);
-        reputation.appendResponse(agentId, user, index, "ipfs://agent-response", keccak256("response"));
-        assertEq(reputation.responseCount(agentId, user, index, agentOwner), 1);
-    }
-
-    function testValidationRequestAndResponseLifecycle() public {
-        vm.prank(agentOwner);
-        uint256 agentId = identity.registerAgent("Gardenaz Agent", "ipfs://gardenaz-agent", agentOwner);
-
-        bytes32 requestHash = keccak256("validate-decision-1");
-        vm.prank(user);
-        validation.validationRequest(validator, agentId, "ipfs://validation-request", requestHash);
-
-        vm.prank(validator);
-        validation.validationResponse(
-            agentId,
-            requestHash,
-            92,
-            "ipfs://validation-response",
-            keccak256("safe"),
-            "policy-safe"
-        );
-
-        (address storedValidator, uint256 storedAgentId, uint8 response, bytes32 responseHash, string memory tag, , bool hasResponse) =
-            validation.getValidation(requestHash);
-        assertEq(storedValidator, validator);
-        assertEq(storedAgentId, agentId);
-        assertEq(response, 92);
-        assertEq(responseHash, keccak256("safe"));
-        assertEq(tag, "policy-safe");
-        assertTrue(hasResponse);
-    }
-
     function testAutopilotPolicyEnforcesRiskAmountIntervalAndAllowlist() public {
         address[] memory protocols = new address[](1);
         protocols[0] = protocolA;
         address[] memory executors = new address[](1);
-        executors[0] = validator;
+        executors[0] = executor;
         bytes32[] memory strategies = new bytes32[](1);
-        strategies[0] = keccak256("steady");
+        strategies[0] = steadyStrategy;
 
         vm.prank(user);
         autopilot.setAutopilotPolicy(1 ether, 0.2 ether, 2, 1 hours, 1 days, protocols, executors, strategies, true);
 
-        assertTrue(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 0.5 ether, 2));
-        assertFalse(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 2 ether, 2));
-        assertFalse(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 0.5 ether, 3));
-        assertFalse(autopilot.canExecute(user, validator, protocolB, keccak256("steady"), 0.5 ether, 2));
+        assertTrue(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 2));
+        assertFalse(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 2 ether, 2));
+        assertFalse(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 3));
+        assertFalse(autopilot.canExecute(user, executor, protocolB, steadyStrategy, 0.5 ether, 2));
         assertFalse(autopilot.canExecute(user, address(0xF00D), protocolA, keccak256("steady"), 0.5 ether, 2));
 
-        autopilot.setAuthorizedVault(address(this), true);
-        autopilot.recordExecution(user, validator, protocolA, keccak256("steady"), 0.5 ether, 2, 0.1 ether);
-        assertFalse(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 0.5 ether, 2));
+        autopilot.setAuthorizedCaller(address(this), true);
+        autopilot.recordExecution(user, executor, protocolA, steadyStrategy, 0.5 ether, 2, 0.1 ether);
+        assertFalse(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 2));
 
         vm.warp(block.timestamp + 1 hours + 1);
-        assertTrue(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 0.5 ether, 2));
+        assertTrue(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 2));
     }
 
-    function testEmergencyPauseBlocksAutopilot() public {
+    function testPolicyListsResetBetweenVersions() public {
         address[] memory protocols = new address[](1);
         protocols[0] = protocolA;
         address[] memory executors = new address[](1);
-        executors[0] = validator;
+        executors[0] = executor;
         bytes32[] memory strategies = new bytes32[](1);
-        strategies[0] = keccak256("steady");
+        strategies[0] = steadyStrategy;
+
+        vm.prank(user);
+        autopilot.setAutopilotPolicy(1 ether, 0.2 ether, 2, 1 hours, 1 days, protocols, executors, strategies, true);
+
+        address[] memory nextProtocols = new address[](1);
+        nextProtocols[0] = protocolB;
+        address[] memory nextExecutors = new address[](1);
+        nextExecutors[0] = address(0xABCD);
+        bytes32[] memory nextStrategies = new bytes32[](1);
+        nextStrategies[0] = growthStrategy;
+
+        vm.prank(user);
+        autopilot.setAutopilotPolicy(2 ether, 0.5 ether, 3, 2 hours, 2 days, nextProtocols, nextExecutors, nextStrategies, true);
+
+        assertFalse(autopilot.allowedProtocols(user, protocolA));
+        assertFalse(autopilot.allowedExecutors(user, executor));
+        assertFalse(autopilot.allowedStrategies(user, steadyStrategy));
+        assertTrue(autopilot.allowedProtocols(user, protocolB));
+        assertTrue(autopilot.allowedExecutors(user, address(0xABCD)));
+        assertTrue(autopilot.allowedStrategies(user, growthStrategy));
+        assertEq(autopilot.policyVersion(user), 2);
+    }
+
+    function testEmergencyPauseBlocksAutopilotUntilResumed() public {
+        address[] memory protocols = new address[](1);
+        protocols[0] = protocolA;
+        address[] memory executors = new address[](1);
+        executors[0] = executor;
+        bytes32[] memory strategies = new bytes32[](1);
+        strategies[0] = steadyStrategy;
 
         vm.prank(user);
         autopilot.setAutopilotPolicy(1 ether, 0.2 ether, 2, 1 hours, 1 days, protocols, executors, strategies, true);
 
         vm.prank(user);
         autopilot.emergencyPause();
+        assertFalse(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 1));
 
-        assertFalse(autopilot.canExecute(user, validator, protocolA, keccak256("steady"), 0.5 ether, 1));
+        vm.prank(user);
+        autopilot.resumeAutopilot();
+        assertTrue(autopilot.canExecute(user, executor, protocolA, steadyStrategy, 0.5 ether, 1));
     }
 
     // ── ERC-721 compliance ──
@@ -165,6 +137,8 @@ contract ERC8004AndAutopilotTest is Test {
         vm.prank(agentOwner);
         identity.transferFrom(agentOwner, user, agentId);
         assertEq(identity.ownerOf(agentId), user);
+        (address storedOwner,, , ,) = identity.agents(agentId);
+        assertEq(storedOwner, user);
     }
 
     function testERC721SafeTransferFrom() public {
@@ -174,6 +148,73 @@ contract ERC8004AndAutopilotTest is Test {
         vm.prank(agentOwner);
         identity.safeTransferFrom(agentOwner, user, agentId);
         assertEq(identity.ownerOf(agentId), user);
+        (address storedOwner,, , ,) = identity.agents(agentId);
+        assertEq(storedOwner, user);
+    }
+
+    function testOnlyContractOwnerCanUpdateReputation() public {
+        vm.prank(agentOwner);
+        uint256 agentId = identity.registerAgent("Gardenaz Agent", "ipfs://gardenaz-agent", agentOwner);
+
+        vm.prank(user);
+        vm.expectRevert();
+        identity.updateReputation(agentId, 88);
+
+        identity.updateReputation(agentId, 88);
+        assertEq(identity.reputationScore(agentId), 88);
+    }
+
+    function testIncrementalAllowlistsDoNotDuplicateEntriesAcrossToggles() public {
+        vm.startPrank(user);
+        autopilot.setProtocolAllowed(protocolA, true);
+        autopilot.setProtocolAllowed(protocolA, false);
+        autopilot.setProtocolAllowed(protocolA, true);
+
+        autopilot.setExecutorAllowed(executor, true);
+        autopilot.setExecutorAllowed(executor, false);
+        autopilot.setExecutorAllowed(executor, true);
+
+        autopilot.setStrategyAllowed(steadyStrategy, true);
+        autopilot.setStrategyAllowed(steadyStrategy, false);
+        autopilot.setStrategyAllowed(steadyStrategy, true);
+        vm.stopPrank();
+
+        address[] memory protocols = autopilot.protocolListOf(user);
+        address[] memory executors = autopilot.executorListOf(user);
+        bytes32[] memory strategies = autopilot.strategyListOf(user);
+
+        assertEq(protocols.length, 1);
+        assertEq(protocols[0], protocolA);
+        assertEq(executors.length, 1);
+        assertEq(executors[0], executor);
+        assertEq(strategies.length, 1);
+        assertEq(strategies[0], steadyStrategy);
+    }
+
+    function testPolicyReplacementDeduplicatesInputLists() public {
+        address[] memory protocols = new address[](2);
+        protocols[0] = protocolA;
+        protocols[1] = protocolA;
+        address[] memory executors = new address[](2);
+        executors[0] = executor;
+        executors[1] = executor;
+        bytes32[] memory strategies = new bytes32[](2);
+        strategies[0] = steadyStrategy;
+        strategies[1] = steadyStrategy;
+
+        vm.prank(user);
+        autopilot.setAutopilotPolicy(1 ether, 0.2 ether, 2, 1 hours, 1 days, protocols, executors, strategies, true);
+
+        address[] memory storedProtocols = autopilot.protocolListOf(user);
+        address[] memory storedExecutors = autopilot.executorListOf(user);
+        bytes32[] memory storedStrategies = autopilot.strategyListOf(user);
+
+        assertEq(storedProtocols.length, 1);
+        assertEq(storedProtocols[0], protocolA);
+        assertEq(storedExecutors.length, 1);
+        assertEq(storedExecutors[0], executor);
+        assertEq(storedStrategies.length, 1);
+        assertEq(storedStrategies[0], steadyStrategy);
     }
 
     function testERC721BalanceAndTotalSupply() public {

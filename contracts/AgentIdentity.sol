@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC721, ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-contract AgentIdentity is ERC721URIStorage {
+contract AgentIdentity is ERC721URIStorage, Ownable {
     struct Agent {
         address owner;
         string name;
@@ -23,7 +24,7 @@ contract AgentIdentity is ERC721URIStorage {
     event MetadataSet(uint256 indexed agentId, string indexed indexedMetadataKey, string metadataKey, bytes metadataValue);
     event ReputationUpdated(uint256 indexed agentId, uint256 score);
 
-    constructor() ERC721("Gardenaz Agent Identity", "GARDENAZ") {}
+    constructor() ERC721("Gardenaz Agent Identity", "GARDENAZ") Ownable(msg.sender) {}
 
     modifier onlyExisting(uint256 agentId) {
         require(_ownerOf(agentId) != address(0), "agent not found");
@@ -79,7 +80,7 @@ contract AgentIdentity is ERC721URIStorage {
         agents[agentId].active = active;
     }
 
-    function updateReputation(uint256 agentId, uint256 score) external onlyExisting(agentId) {
+    function updateReputation(uint256 agentId, uint256 score) external onlyOwner onlyExisting(agentId) {
         reputationScore[agentId] = score;
         emit ReputationUpdated(agentId, score);
     }
@@ -95,6 +96,14 @@ contract AgentIdentity is ERC721URIStorage {
     function _isAuthorizedOrOwner(address spender, uint256 agentId) internal view onlyExisting(agentId) returns (bool) {
         address tokenOwner = ownerOf(agentId);
         return spender == tokenOwner || getApproved(agentId) == spender || isApprovedForAll(tokenOwner, spender);
+    }
+
+    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+        address previousOwner = super._update(to, tokenId, auth);
+        if (previousOwner != address(0)) {
+            agents[tokenId].owner = to;
+        }
+        return previousOwner;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721URIStorage) returns (bool) {

@@ -1,80 +1,37 @@
 {
-  "name": "Gardena Autopilot Agent",
-  "description": "Policy-gated AI agent for Mantle RWA farming. It analyzes USDY and mETH yield routes, recommends bounded strategy moves, writes transparent decision logs, and exposes proof data for Gardena users.",
-  "version": "0.1.0",
-  "capabilities": [
-    {
-      "type": "rwa-yield-planning",
-      "description": "Ranks Mantle RWA opportunities across USDY, mETH, and dynamic USDY/mETH routes."
-    },
-    {
-      "type": "policy-gated-autopilot",
-      "description": "Applies deterministic user guardrails before approving rebalance decisions."
-    },
-    {
-      "type": "onchain-decision-logging",
-      "description": "Anchors approved or blocked decisions through the DecisionLog contract on Mantle Sepolia."
-    },
-    {
-      "type": "llm-advisory-rationale",
-      "description": "Uses an OpenAI-compatible LLM node for market explanation while keeping execution bounded by deterministic policy checks."
-    }
-  ],
-  "endpoints": {
-    "web": "https://gardenaz.xyz/app",
-    "a2a": "https://agent.gardenaz.xyz/autopilot/plan",
-    "mcp": "https://agent.gardenaz.xyz/mcp"
-  },
-  "serviceEndpoints": [
-    {
-      "type": "web",
-      "url": "https://gardenaz.xyz/app"
-    },
-    {
-      "type": "a2a",
-      "url": "https://agent.gardenaz.xyz/autopilot/plan"
-    },
-    {
-      "type": "mcp",
-      "url": "https://agent.gardenaz.xyz/mcp"
-    }
-  ],
-  "paymentAddress": "0x143974B30727F9856131BD6F37E64679aF5F0626",
+  "name": "Gardenaz Autopilot Agent",
+  "description": "ERC-8004 identified AI agent for Gardenaz on Mantle. It publishes policy-bounded decisions and benchmark outcomes for live proof and radical transparency.",
+  "version": "0.2.0",
   "chainId": 5003,
   "network": "mantle-sepolia",
+  "agentIdentity": {
+    "agentId": 1,
+    "agentURI": "ipfs://bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu",
+    "owner": "0x143974B30727F9856131BD6F37E64679aF5F0626",
+    "agentWallet": "0x143974B30727F9856131BD6F37E64679aF5F0626"
+  },
   "contracts": {
     "agentIdentity": "0x7d4cF8dAcCdc589d8601CB547d693c73dd5724e2",
     "decisionLog": "0x16E67F2Aaa40767FefeD0f2E1cF6bE87Ac3722Da",
-    "riskPolicy": "0xF48817E86B2D6256c6Af77b5839BC6Ea29C25048",
-    "reputationRegistry": "0x5ceFB0C6Be03909dc5d291BE3bE9ef677e95b672",
-    "validationRegistry": "0x116Fd78B3cb66c0904950656F57E7c28691e121B",
-    "autopilotPolicy": "0xd35fc1eb7BA3429f1B206FA6b054bbB71eCbD7e8",
-    "gardenUsdMock": "0x66cE4A644e004830887C3E8a44Fd5122B1edb28B",
-    "gardenRwaMockVault": "0x376368699aF13e6492b2A330e1d8e5D6560e38a8",
-    "steadyAdapter": "0x23F83a27674E9776Ab663b10e3745DD682858f29",
-    "growthAdapter": "0x744F554EfEA9cE87E459E4a927Ba7F1fb85669c5",
-    "boostAdapter": "0x9FD80B063C4d28fDbc592C7f4E4BA7F6f8166DEc"
+    "autopilotPolicy": "0xd35fc1eb7BA3429f1B206FA6b054bbB71eCbD7e8"
   },
-  "authentication": {
-    "type": "wallet-signature",
-    "description": "Requests should be authenticated with a user wallet or service-side relayer policy."
-  },
-  "model": "OpenAI-compatible LLM advisor with deterministic fallback",
-  "properties": {
-    "boundedAutonomy": true,
-    "llmCanExecuteDirectly": false,
-    "policyGate": "deterministic",
-    "supportedAssets": [
-      "USDY",
-      "mETH",
-      "USDY/mETH"
-    ],
-    "supportedProtocols": [
-      "Mantle RWA USDY Route",
-      "Mantle mETH Yield Route",
-      "Mantle Dynamic RWA Route"
-    ]
-  }
+  "capabilities": [
+    {
+      "type": "erc-8004-agent-identity",
+      "description": "Publishes a persistent on-chain identity NFT for the AI agent."
+    },
+    {
+      "type": "onchain-benchmarking",
+      "description": "Anchors decisions and outcomes on Mantle through the retained DecisionLog trust layer."
+    },
+    {
+      "type": "radical-transparency",
+      "description": "Exposes public policy state and proof-oriented decision records for live review."
+    }
+  ],
+  "proofSurfaces": [
+    "AgentIdentity",
+    "AutopilotPolicy",
+    "DecisionLog"
+  ]
 }
-
-

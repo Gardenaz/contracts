@@ -1,72 +1,69 @@
 # Gardenaz Contracts Context
 
-Read this before modifying contracts.
+Read this before modifying the contracts package.
 
-## Product Role
+## Product role
 
-Contracts provide the on-chain trust layer for Gardenaz:
+This package is the retained Gardenaz trust layer for Mantle:
 
-- Agent identity / ownership / authorization.
-- Policy settings and execution guardrails.
-- Decision and outcome audit trail.
-- Reputation and validation registry for ERC-8004-style agent ecosystem.
+- `AgentIdentity` keeps ERC-8004-style identity NFTs for AI agents
+- `AutopilotPolicy` keeps deterministic user guardrails
+- `DecisionLog` keeps on-chain benchmark records for AI decisions and outcomes
 
-## Current Deployment
+The contracts package no longer owns mock vault custody, mock settlement tokens, or mock route adapters.
+
+## Current deployment artifact scope
 
 Network: Mantle Sepolia (`5003`)
 
-- AgentIdentity: `0xfAc7E0Ecb4BdFB5CabDf0A4A8f9930E547771271`
-- DecisionLog: `0x4f38D23639a1E8644c64b262d2E4f09d22c5aC7c`
-- RiskPolicy: `0x73132c590b323B37344d52C9adaDA2dA939896d3`
-- ReputationRegistry: `0xC2a58107725a773A21102f575104b869dAfFCb4d`
-- ValidationRegistry: `0x25863A08185bb82C7C363745702125800b4509da`
-- AutopilotPolicy: `0xe04003396491954919a851fBbF90d87555cDdFEf`
+- AgentIdentity: `0x7d4cF8dAcCdc589d8601CB547d693c73dd5724e2`
+- DecisionLog: `0x16E67F2Aaa40767FefeD0f2E1cF6bE87Ac3722Da`
+- AutopilotPolicy: `0xd35fc1eb7BA3429f1B206FA6b054bbB71eCbD7e8`
 
-Agent ID:
+Registered agent snapshot retained in artifact:
 
 - agentId: `1`
 - URI: `ipfs://bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu`
-- owner: `0x143974B30727F9856131BD6F37E64679aF5F0626`
+- owner / wallet: `0x143974B30727F9856131BD6F37E64679aF5F0626`
 
-## Key Files
+## Hackathon invariants
+
+The package must continue to preserve these three properties:
+
+1. On-chain benchmarking of AI decisions and outcomes on Mantle
+2. ERC-8004 agent identity NFT as the canonical identity primitive
+3. Radical transparency through readable policy state, decision logs, and proof-friendly events
+
+## Key files
 
 - `contracts/AgentIdentity.sol`
-- `contracts/DecisionLog.sol`
 - `contracts/AutopilotPolicy.sol`
-- `contracts/RiskPolicy.sol`
-- `contracts/ReputationRegistry.sol`
-- `contracts/ValidationRegistry.sol`
+- `contracts/DecisionLog.sol`
 - `script/Deploy.s.sol`
+- `script/VerifyMantleSepolia.sh`
 - `deployments/mantle-sepolia.json`
 - `docs/AUDIT.md`
 
-## Current Verification
+## Verification
 
 Run:
 
 ```bash
-cd /root/projects/Gardenaz/contracts
-/root/.foundry/bin/forge test -vv
+cd /mnt/e/web3/gardenaz/contracts
+/home/zandhi/.foundry/bin/forge test -vv
 ```
 
-Latest audit: 17 tests pass.
+This package should pass with only retained-contract tests.
 
-## Known Gaps
+## Current constraints
 
-- DecisionLog write/outcome functions public.
-- Decision hash can be overwritten.
-- Outcomes mutable forever.
-- AutopilotPolicy `recordExecution` public.
-- AgentIdentity `updateReputation` public.
-- RiskPolicy overlaps AutopilotPolicy and does not enforce daily loss.
-- Contract policy gate not strongly linked to DecisionLog logging.
-- Deployment script does not write JSON/verify/register/configure.
+- `DecisionLog` is the benchmark anchor, not a strategy executor
+- `AutopilotPolicy` is the policy proof surface, not a custody or protocol adapter layer
+- `AgentIdentity` is still required because Gardenaz keeps ERC-8004 identity in the product architecture
 
-## Do Next
+## Do next
 
-1. Add auth and duplicate guards to DecisionLog.
-2. Restrict AutopilotPolicy recordExecution.
-3. Restrict/remove public reputation update.
-4. Clarify RiskPolicy vs AutopilotPolicy.
-5. Add policy proof/snapshot fields or on-chain policy check to decisions.
-6. Add deployment hygiene scripts.
+1. Keep ABI artifacts for the retained contracts aligned with source.
+2. Expand benchmark payloads if Agni execution needs richer proof fields.
+3. Preserve proof readability for app, livestream, and judging surfaces.
+4. Avoid reintroducing custody or mock protocol logic into this package.

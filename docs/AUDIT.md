@@ -1,218 +1,93 @@
 # Gardenaz Contracts Audit
 
-Last updated: 2026-06-03
+Last updated: 2026-06-06
 
 ## Scope
 
-Repo: `/root/projects/Gardenaz/contracts`
+Repo path: `E:/web3/gardenaz/contracts`
 
-Purpose: Solidity contracts for Gardenaz agent identity, policy gating, decision/outcome logging, reputation, and validation.
+Purpose: retained Mantle trust layer for Gardenaz AI benchmarking, ERC-8004-style agent identity, policy proof, and radical transparency.
 
-## Current Status
+## Current architecture
 
-Working:
+Retained contracts:
 
-- Foundry tests pass: 17/17.
-- Mantle Sepolia deployment artifacts exist.
-- Agent ID 1 is registered with IPFS metadata.
-- Deployment JSON is copied into app and agent repos.
+- `AgentIdentity`
+- `DecisionLog`
+- `AutopilotPolicy`
 
-Current deployment:
+Removed from this code cut:
 
-- Network: Mantle Sepolia
-- Chain ID: `5003`
-- AgentIdentity: `0xfAc7E0Ecb4BdFB5CabDf0A4A8f9930E547771271`
-- DecisionLog: `0x4f38D23639a1E8644c64b262d2E4f09d22c5aC7c`
-- RiskPolicy: `0x73132c590b323B37344d52C9adaDA2dA939896d3`
-- ReputationRegistry: `0xC2a58107725a773A21102f575104b869dAfFCb4d`
-- ValidationRegistry: `0x25863A08185bb82C7C363745702125800b4509da`
-- AutopilotPolicy: `0xe04003396491954919a851fBbF90d87555cDdFEf`
+- mock settlement token
+- mock vault
+- mock adapters
+- duplicate risk contract
+- reputation and validation registries from the old hackathon-era mock architecture
 
-Registered agent:
+## Hackathon invariants preserved
 
-- agentId: `1`
-- URI: `ipfs://bafkreica6vuhzakepbjntfjqhddmjh6vicpgcep2a657xfwtjkgb56kvxu`
-- owner/wallet: `0x143974B30727F9856131BD6F37E64679aF5F0626`
+### On-chain benchmarking on Mantle
 
-Not production-ready:
+`DecisionLog` remains the source of truth for AI decision and outcome records. This preserves the benchmark trail needed to compare agent behavior publicly.
 
-- Several write functions are public.
-- Policy gate is not strongly linked to DecisionLog.
-- Duplicate policy contracts need clarification.
-- Explorer verification status missing.
+### ERC-8004 agent identity NFT
 
-## Findings
+`AgentIdentity` remains the identity anchor for every participating AI agent. This preserves an on-chain record of agent provenance and achievement.
 
-### P0: DecisionLog write paths are public
+### Radical transparency
 
-- File: `contracts/DecisionLog.sol`
-- Functions:
-  - `logDecision`
-  - `updateOutcome`
-  - `recordOutcome`
-  - `recordOutcomeForHash`
-- Anyone can log fake decisions or overwrite outcomes.
+The retained trust layer is intentionally proof-friendly:
 
-Fix:
+- `AutopilotPolicy` exposes user-approved guardrails
+- `DecisionLog` exposes decision and outcome records
+- `AgentIdentity` exposes public identity metadata
 
-- Add authorization:
-  - agent owner or authorized wallet via `AgentIdentity.isAuthorizedOrOwner`, or
-  - dedicated relayer role, or
-  - Ownable/AccessControl role.
+These three surfaces are the on-chain foundation for live proof, live streaming, and judge inspection.
 
-### P0: Decision hash can be overwritten
+## Verification snapshot
+
+Required verification command:
+
+```bash
+cd /mnt/e/web3/gardenaz/contracts
+/home/zandhi/.foundry/bin/forge test -vv
+```
+
+Task 1 is only complete when tests pass without any imports from deleted contracts.
+
+## Open findings
+
+### P1: DecisionLog benchmark payload is still generic
 
 - File: `contracts/DecisionLog.sol`
-- `decisionIdsByHash[decisionHash] = id` overwrites previous mapping.
 
-Fix:
+The benchmark payload is adequate for current proof anchoring, but future direct Agni execution will likely need richer fields such as token pair, route type, fee tier, minimum output, or LP position identifiers.
 
-- Require non-zero `decisionHash`.
-- Require `decisionIdsByHash[decisionHash] == 0`.
+Impact:
 
-### P0: Outcomes mutable forever
+- current benchmark trail is valid but coarse
+- later DeFi execution proof may be harder to interpret without expansion
 
-- File: `contracts/DecisionLog.sol`
-- Outcome update functions can repeatedly replace outcome data.
-
-Fix options:
-
-1. Make outcome one-shot immutable.
-2. Store versioned outcome updates.
-3. Restrict updates to authorized relayer/agent.
-
-### P0: AutopilotPolicy recordExecution is public
-
-- File: `contracts/AutopilotPolicy.sol`
-- `recordExecution()` can be called by anyone.
-- Attack: grief user by consuming daily loss and updating last execution time.
-
-Fix:
-
-- Restrict caller to user, authorized agent, or relayer role.
-
-### P0: AgentIdentity reputation update is public
+### P1: AgentIdentity reputation is centrally administered
 
 - File: `contracts/AgentIdentity.sol`
-- `updateReputation()` can be called by anyone.
 
-Fix:
+`updateReputation()` is now restricted to the contract owner, which is the smallest coherent retained-control model after removing the old registry stack.
 
-- Remove function or restrict it to `ReputationRegistry`/owner/admin.
+Impact:
 
-### P1: DecisionLog not linked to policy gate
+- prevents arbitrary third parties from mutating reputation
+- still leaves a centralized admin trust assumption until a dedicated reputation flow is designed
 
-- File: `contracts/DecisionLog.sol`
-- `logDecision()` does not check `AutopilotPolicy.canExecute()`.
-
-Fix options:
-
-1. Add policy fields to `logDecision` and verify on-chain.
-2. Store `policySnapshotHash`, `policyAllowed`, policy contract address, and off-chain proof.
-3. Let agent relayer verify policy before logging, but document trust model clearly.
-
-### P1: AutopilotPolicy daily loss check incomplete
+### P1: AutopilotPolicy caller model is still minimal
 
 - File: `contracts/AutopilotPolicy.sol`
-- `canExecute()` checks current stored daily loss, not prospective new loss.
 
-Fix:
+The contract now uses an `authorized caller` gate for execution recording, which is directionally correct for direct executor flows. The remaining open question is whether the final Agni executor model should use a single relayer, a set of approved callers, or richer role separation.
 
-- Add expected/prospective loss input or enforce loss in execution recording path.
+## Notes for follow-up
 
-### P1: Policy allowlist stale entries
-
-- File: `contracts/AutopilotPolicy.sol`
-- `setAutopilotPolicy()` adds allowed protocols but does not clear old ones.
-
-Fix:
-
-- Add explicit remove/reset function or enumerable per-user allowlist.
-
-### P1: RiskPolicy duplicates AutopilotPolicy
-
-- File: `contracts/RiskPolicy.sol`
-- Stores max daily loss but does not enforce it.
-- Overlaps with `AutopilotPolicy`.
-
-Fix:
-
-- Merge/deprecate/clarify contract roles.
-- If kept, enforce max daily loss and risk bounds.
-
-### P1: AgentIdentity owner field can go stale
-
-- File: `contracts/AgentIdentity.sol`
-- Struct stores owner, but ERC721 transfers change `ownerOf(agentId)`.
-
-Fix:
-
-- Remove stored owner from struct or update it on transfer hooks.
-
-### P1: active flag not enforced by registries
-
-- Files:
-  - `contracts/AgentIdentity.sol`
-  - `contracts/ReputationRegistry.sol`
-  - `contracts/ValidationRegistry.sol`
-- `active` can be changed but registries only check owner/existence.
-
-Fix:
-
-- Add `isActive(agentId)` checks where needed.
-
-### P1: Validation and feedback spam possible
-
-- Files:
-  - `contracts/ValidationRegistry.sol`
-  - `contracts/ReputationRegistry.sol`
-- Public request/feedback paths may be intended but can be spammed.
-
-Fix:
-
-- Define trust model: public, fee-gated, allowlisted, or signed-feedback only.
-
-### P2: Deployment script minimal
-
-- File: `script/Deploy.s.sol`
-- Deploys and prints addresses only.
-- Does not write JSON, verify contracts, register agent, or configure policy.
-
-Fix:
-
-- Add post-deploy scripts or document exact manual steps.
-
-### P2: ERC-8004 status needs precision
-
-Current implementation is ERC-8004-style identity/reputation/validation, but may not expose formal ERC-8004 interface support.
-
-Fix:
-
-- Compare hackathon/spec interface expectations.
-- Add interface IDs/support if required.
-
-## Integration Notes
-
-Deployment JSON exists in:
-
-- `contracts/deployments/mantle-sepolia.json`
-- `app/src/lib/contracts/mantle-sepolia.json`
-- `agent/src/config/mantle-sepolia.json`
-
-Agent relayer supports DecisionLog calls, but latest audit did not confirm live path reads `AutopilotPolicy.canExecute()` before logging.
-
-App has contract JSON but does not yet show live proof/contract state in UI.
-
-## Verification Snapshot
-
-- `/root/.foundry/bin/forge test -vv` passes: 17 tests.
-
-## Next Contracts Work Order
-
-1. Add authorization to DecisionLog write/outcome functions.
-2. Add duplicate hash guard and outcome immutability/versioning.
-3. Restrict `AutopilotPolicy.recordExecution`.
-4. Restrict/remove `AgentIdentity.updateReputation`.
-5. Clarify/merge RiskPolicy vs AutopilotPolicy.
-6. Add policy linkage to DecisionLog/relayer.
-7. Add deployment/post-deploy/verification scripts and docs.
+1. If Agni execution is logged directly, decide whether `authorized callers` should become a dedicated relayer/executor role model.
+2. If live proof needs richer semantics, extend `DecisionLog` rather than reintroducing mock route contracts.
+3. Preserve the three hackathon invariants in every future contract change.
+4. If decentralized reputation returns later, replace the owner-only path with a narrowly scoped benchmark/reputation writer model.
